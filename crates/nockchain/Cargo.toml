@@ -39,6 +39,15 @@ tracing-test.workspace = true
 
 zkvm-jetpack.workspace = true
 
+# Performance dependencies for optimized mining
+rayon = "1.7"            # for easy multi-core parallelism
+packed_simd_2 = "0.3"    # for wide-vector (SIMD) batching
+ocl = { version = "0.30", optional = true }  # optional GPU offload
+
+[features]
+# Enable GPU mining support when you build with --features gpu_mining
+gpu_mining = ["ocl"]
+
 [build-dependencies]
 vergen = { workspace = true, features = [
     "build",
@@ -48,3 +57,9 @@ vergen = { workspace = true, features = [
     "rustc",
     "si",
 ] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+debug = false
