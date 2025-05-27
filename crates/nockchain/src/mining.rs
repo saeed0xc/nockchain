@@ -1,3 +1,4 @@
+
 use std::str::FromStr;
 
 use kernels::miner::KERNEL;
@@ -126,7 +127,7 @@ pub fn create_mining_driver(
                     effect_res = handle.next_effect() => {
                         let Ok(effect) = effect_res else {
                           warn!("Error receiving effect in mining driver: {effect_res:?}");
-                        continue;
+                          continue;
                         };
                         let Ok(effect_cell) = (unsafe { effect.root().as_cell() }) else {
                             drop(effect);
@@ -170,7 +171,7 @@ pub fn create_mining_driver(
 pub async fn mining_attempt(candidate: NounSlab, handle: NockAppHandle) -> () {
     // Parallel, SIMD-batched mining entry
     let max_nonce = 1 << 32; // example limit
-    let target = /* derive target from candidate */ { unimplemented!() };
+    let target = derive_target_from(candidate); // you must implement this
 
     (0..max_nonce)
         .into_par_iter()
@@ -180,17 +181,21 @@ pub async fn mining_attempt(candidate: NounSlab, handle: NockAppHandle) -> () {
             let hashes = compute_hash_batch(&target, nonces);
             for i in 0..4 {
                 if hashes[i] < target {
-                    // submit mined result
-                    // handle.submit or poke Mined wire
+                    // TODO: send mined result using handle.poke(MiningWire::Mined, ...)
                 }
             }
         });
 }
 
-/// Compute four hashes at once using SIMD lanes.
+/// Simple batch wrapper calling scalar `compute_hash` 4×
 fn compute_hash_batch(target: &u128, nonces: u64x4) -> [u128; 4] {
-    // TODO: replace with actual hash logic using SIMD
-    [0u128; 4]
+    let arr: [u64; 4] = nonces.into();
+    [
+        compute_hash(target, arr[0]),
+        compute_hash(target, arr[1]),
+        compute_hash(target, arr[2]),
+        compute_hash(target, arr[3]),
+    ]
 }
 
 #[instrument(skip(handle, pubkey))]
